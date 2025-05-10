@@ -6,6 +6,17 @@ namespace network
 	{
 		switch ( error_code )
 		{
+		// Our custom error codes:
+		case BAD_ADDRESS_TYPE:
+			return "The address type you tried to obtain did not match the type stored in the socket_address object.";
+		case UNIMPLEMENTED:
+			return "The function that was called has not been implemented yet.";
+		case ADDRESS_NOT_FOUND:
+			return "The DNS query found no addresses for the given hostname.";
+		case SOCKET_NOT_VALID:
+			return "A socket operation was attempted on an invalid/default socket object.";
+
+		// WinSock2 error codes:
 		case 10004L: // WSAEINTR
 			return "A blocking operation was interrupted by a call to WSACancelBlockingCall.";
 		case 10009L: // WSAEBADF
@@ -188,6 +199,8 @@ namespace network
 			return "No such host is known securely.";
 		case 11033L: // WSA_IPSEC_NAME_POLICY_ERROR
 			return "Name based IPSEC policy could not be added.";
+
+		// Default case for unknown error codes.
 		default:
 			return "Unknown socket error code!";
 		}

@@ -12,7 +12,12 @@ namespace network
 		// Our uniquely defined error codes, that can also be sent into the socket_error constructor.
 		enum codes : int
 		{
-
+			BAD_ADDRESS_TYPE	= 1,
+			UNIMPLEMENTED		= 2,
+			ADDRESS_NOT_FOUND	= 3,
+			SOCKET_NOT_VALID	= 4,
+			OPERATION_FAILED	= 5,
+			OPERATION_TIMEOUT	= 6,
 		};
 
 	private:
