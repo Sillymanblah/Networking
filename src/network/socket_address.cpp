@@ -29,16 +29,14 @@ namespace network
 	socket_address::socket_address( AF address_family, uint16_t hextet1, uint16_t hextet2, uint16_t hextet3, uint16_t hextet4, uint16_t hextet5, uint16_t hextet6, uint16_t hextet7, uint16_t hextet8, uint16_t port ) :
 		socket_address( address_family, std::array< uint16_t, 8 >{ hextet1, hextet2, hextet3, hextet4, hextet5, hextet6, hextet7, hextet8 }, port ) {}
 
-	socket_address::socket_address( AF address_family, std::string address )
-	{ throw socket_error( socket_error::UNIMPLEMENTED ); }
 
-	socket_address::socket_address( AF address_family, std::string address, std::string port )
+	void socket_address::build_address( AF address_family, const std::string& address, const std::string& port )
 	{
 		if ( address.empty() ) throw socket_error( socket_error::ADDRESS_NOT_FOUND );
 
 		// Need to read data out of address and port.
 		addrinfo* addresses;
-		addrinfo hints;
+		addrinfo hints {};
 		hints.ai_family = static_cast< int > ( address_family );
 
 		// Need to read data out of address and port.
@@ -46,9 +44,36 @@ namespace network
 
 		if ( addresses == nullptr ) throw socket_error( socket_error::ADDRESS_NOT_FOUND );
 
-		std::clog << addresses->ai_addrlen; // TODO: test this then remove
+		if ( addresses->ai_addrlen == sizeof( IPv4_address ) )
+		{
+			memcpy( &this->data.ipv4, addresses->ai_addr, sizeof( IPv4_address ) );
+			is_ipv6 = false;
+		}
+		else if ( addresses->ai_addrlen == sizeof( IPv6_address ) )
+		{
+			memcpy( &this->data.ipv6, addresses->ai_addr, sizeof( IPv6_address ) );
+			is_ipv6 = true;
+		}
+		else throw socket_error( socket_error::BAD_ADDRESS_TYPE ); // Address type unable to be deduced, throw an error.
+	}
 
-		throw socket_error( socket_error::UNIMPLEMENTED );
+	socket_address::socket_address( AF address_family, const std::string& address )
+	{ throw socket_error( socket_error::UNIMPLEMENTED ); }
+
+	socket_address::socket_address( AF address_family, const std::string& address, const std::string& port )
+	{
+		// Temporary workaround for the fact that this needs WSA to be started up before we can use it, we need to use WSAStartup and Cleanup in here for now...
+		WSAData data;
+		::WSAStartup( MAKEWORD( 2, 2 ), &data );
+
+		try { this->build_address( address_family, address, port ); } // Attempt to build the address.
+		catch ( ... )
+		{
+			::WSACleanup(); // Clean up WSA on failed build.
+			throw; // Rethrow the previous error.
+		}
+
+		::WSACleanup(); // Cleanup WSA on successful address build.
 	}
 
 	bool socket_address::is_ipv6_address() const

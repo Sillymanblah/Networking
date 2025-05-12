@@ -57,12 +57,16 @@ namespace network
 		// IPv6 constructor
 		socket_address( AF address_family, uint16_t hextet1, uint16_t hextet2, uint16_t hextet3, uint16_t hextet4, uint16_t hextet5, uint16_t hextet6, uint16_t hextet7, uint16_t hextet8, uint16_t port = 2027 );
 
+	private:
+		void build_address( AF address_family, const std::string& address, const std::string& port  );
+
+	public:
 		// Convert string(s) to socket_address via direct conversion or DNS query, while specifying ipv4 or ipv6
 		// This function will not work yet and instead always throws an exception.
-		socket_address( AF address_family, std::string address );
+		socket_address( AF address_family, const std::string& address );
 		// Convert string(s) to socket_address via direct conversion or DNS query, while specifying ipv4 or ipv6
 		// port can be a service name or a number.
-		socket_address( AF address_family, std::string address, std::string port );
+		socket_address( AF address_family, const std::string& address, const std::string& port );
 
 		// IPv6 data structure 
 		struct IPv6_address
