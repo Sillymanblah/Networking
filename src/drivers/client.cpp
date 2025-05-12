@@ -1,4 +1,5 @@
-#include "../network/socket.hpp"
+#include "../network/socket"
+
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -42,7 +43,7 @@ int main()
 
 		handle_client( client );
     }
-    catch ( const std::exception& error )
+    catch ( const network::socket_error& error )
 	{
         std::cerr << "Error: " << error.what() << std::endl;
         return 1;

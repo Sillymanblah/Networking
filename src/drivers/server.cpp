@@ -1,4 +1,4 @@
-#include "../network/socket.hpp"
+#include "../network/socket"
 
 #include <cstring>
 #include <iostream>
@@ -27,8 +27,18 @@ void handle_connection( network::stream_socket connection )
 	{
 		connection.recieve( message, buffer_size );
 		std::cout << "Received message: [" << message << "]\n";
-		connection.send( message, std::strlen( message ) );
-		std::cout << "Returned message: [" << message << "]\n";
+
+		if ( !shutdown )
+		{
+			connection.send( message, std::strlen( message ) );
+			std::cout << "Returned message: [" << message << "]\n";
+		}
+		else
+		{
+			constexpr char shutdown_message[] = "shutdown";
+			connection.send( shutdown_message, std::strlen( shutdown_message ) );
+			std::cout << "Returned message: [" << shutdown_message << "]\n";
+		}
 	}
 
 	if ( !shutdown && std::strcmp( message, "shutdown" ) == 0 )
@@ -79,7 +89,7 @@ int main()
 		}
 		while ( !shutdown );
 	}
-	catch ( const std::runtime_error& error ) { std::cerr << error.what(); }
+	catch ( const socket_error& error ) { std::cerr << error.what(); }
 
 	// Join all the open threads as the connections are closed, we might want a way to forcibly close them.
 	for ( std::thread& connection : connection_handlers )

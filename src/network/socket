@@ -1,0 +1,8 @@
+#pragma once
+#ifndef __SOCKET__
+#define __SOCKET__
+
+#include "socket.hpp"
+#include "socket_error.hpp"
+
+#endif // __SOCKET__
