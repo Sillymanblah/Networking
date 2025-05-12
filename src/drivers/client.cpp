@@ -8,7 +8,7 @@ void handle_client( network::stream_socket& connection )
 	constexpr int buffer_size = 1024;
 	char message[ buffer_size ] = "";
 
-	while ( std::strcmp( message, "exit" ) )
+	while ( std::strcmp( message, "exit" ) && std::strcmp( message, "shutdown" ) )
 	{
 		std::cout << "Please enter a message to send the server: ";
 		std::cin.getline( message, buffer_size, '\n' );
