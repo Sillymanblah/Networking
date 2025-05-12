@@ -2,9 +2,14 @@
 #ifndef ADDRESS_HPP
 #define ADDRESS_HPP
 
+// Temporary include
+#include "socket_error.hpp"
+
 #include <string>
-#include <stdint.h>
+#include <cstdint>
 #include <array>
+#include <ostream>
+#include <istream>
 
 namespace network
 {
@@ -141,6 +146,131 @@ namespace network
 		IPv4_address get_ipv4() const;
 
 		IPv6_address get_ipv6() const;
+
+	private:
+		template < class _Elem, class _Traits >
+		void print_ipv4( std::basic_ostream< _Elem, _Traits >& output ) const
+		{
+			// State of the output
+			std::ios_base::iostate state = std::ios_base::goodbit;
+
+			// Setting the format flags basefield to decimal without showing the base for this print operation.
+			std::ios_base::fmtflags previous = output.setf( std::ios_base::dec, std::ios_base::basefield | std::ios_base::showbase );
+
+			// Getting the num_put facet for the locale.
+			using num_put = std::num_put< _Elem >;
+			const num_put& num_facet = std::use_facet< num_put >( output.getloc() );
+
+			for ( size_t index = 0; index < 4 && state == std::ios_base::goodbit; ++index )
+			{
+				// For all iterations after the first, put a dot between the numbers, if this fails, set the badbit.
+				if ( index != 0 && output.rdbuf()->sputc( '.' ) == _Traits::eof() )
+					state = std::ios_base::badbit;
+
+				// If there was no failure in the put, then if the put operation for the number fails, set the badbit.
+				else if ( num_facet.put( output, output, output.fill(), static_cast< uint64_t >( this->data.ipv4.address.octets[ index ] ) ).failed() )
+					state = std::ios_base::badbit;
+			}
+
+			// Returning the basefield to the previous setting from before we changed it.
+			output.setf( previous, std::ios_base::basefield | std::ios_base::showbase );
+
+			// Set the state based on our current state.
+			output.setstate( state );
+		}
+		
+		// Does not currently implement the rules for omitting zeroes by use of the double colon.
+		template < class _Elem, class _Traits >
+		void print_ipv6( std::basic_ostream< _Elem, _Traits >& output ) const
+		{
+			// State of the output
+			std::ios_base::iostate state = std::ios_base::goodbit;
+
+			// Setting the format flags basefield to hexidecimal without showing the base for this print operation.
+			std::ios_base::fmtflags previous = output.setf( std::ios_base::hex, std::ios_base::basefield | std::ios_base::showbase );
+
+			// Getting the num_put facet for the locale.
+			using num_put = std::num_put< _Elem >;
+			const num_put& num_facet = std::use_facet< num_put >( output.getloc() );
+
+			// Begin the output of a ipv6 address with the opening bracket, if this failes, set the badbit immediately.
+			if ( output.rdbuf()->sputc( '[' ) == _Traits::eof() )
+				state = std::ios_base::badbit;
+
+			for ( size_t index = 0; index < 8 && state == std::ios_base::goodbit; ++index )
+			{
+				// For all iterations after the first, put a colon between the numbers, if this fails, set the badbit.
+				if ( index != 0 && output.rdbuf()->sputc( ':' ) == _Traits::eof() )
+					state = std::ios_base::badbit;
+
+				// If there was no failure in the put, then if the put operation for the number fails, set the badbit.
+				else if ( num_facet.put( output, output, output.fill(), static_cast< uint64_t >( this->data.ipv6.address.hextets[ index ] ) ).failed() )
+					state = std::ios_base::badbit;
+			}
+
+			// If state is still good, output the closing bracket and we can get on with life.
+			if ( state == std::ios_base::goodbit && output.rdbuf()->sputc( ']' ) == _Traits::eof() )
+				state = std::ios_base::badbit;
+
+			// Returning the basefield to the previous setting from before we changed it.
+			output.setf( previous, std::ios_base::basefield | std::ios_base::showbase );
+
+			// Set the state based on our current state.
+			output.setstate( state );
+		}
+		
+		static uint16_t fix_port( const uint16_t& port );
+
+		template < class _Elem, class _Traits >
+		void print_port( std::basic_ostream< _Elem, _Traits >& output ) const
+		{
+			// State of the output
+			std::ios_base::iostate state = std::ios_base::goodbit;
+
+			// Setting the format flags basefield to decimal without showing the base for this print operation.
+			std::ios_base::fmtflags previous = output.setf( std::ios_base::dec, std::ios_base::basefield | std::ios_base::showbase );
+
+			// Getting the num_put facet for the locale.
+			using num_put = std::num_put< _Elem >;
+			const num_put& num_facet = std::use_facet< num_put >( output.getloc() );
+
+			// For all iterations after the first, put a colon between the numbers, if this fails, set the badbit.
+			if ( output.rdbuf()->sputc( ':' ) == _Traits::eof() )
+				state = std::ios_base::badbit;
+
+			// If there was no failure in the put, then if the put operation for the number fails, set the badbit.
+			// Note that technically both ports should be in the same place, but this might be compiler dependent, so to avoid that we check ahead of time.
+			else if ( num_facet.put( output, output, output.fill(), static_cast< uint64_t >( fix_port( this->is_ipv6 ? this->data.ipv6.port : this->data.ipv4.port ) ) ).failed() )
+				state = std::ios_base::badbit;
+
+			// Returning the basefield to the previous setting from before we changed it.
+			output.setf( previous, std::ios_base::basefield | std::ios_base::showbase );
+
+			// Set the state based on our current state.
+			output.setstate( state );
+		}
+
+	public:
+		template < class _Elem, class _Traits >
+		friend std::basic_ostream< _Elem, _Traits >& operator << ( std::basic_ostream< _Elem, _Traits >& output, const socket_address& address )
+		{
+			typename std::basic_ostream< _Elem, _Traits >::sentry my_sentry( output );
+
+			if ( my_sentry )
+			{
+				if ( address.is_ipv6 ) address.print_ipv6( output );
+				else address.print_ipv4( output );
+			
+				// If the output state is good after printing out the ip base, print the port.
+				if ( output.good() ) address.print_port( output );
+			}
+
+			return output;
+		}
+
+		template < class _Elem, class _Traits >
+		friend std::basic_istream< _Elem, _Traits >& operator >> ( std::basic_istream< _Elem, _Traits >& input, const socket_address& address )
+		{ throw socket_error( socket_error::UNIMPLEMENTED ); }
 
 	private:
 		union

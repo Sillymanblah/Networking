@@ -93,5 +93,8 @@ namespace network
 		if ( !this->is_ipv6 ) throw socket_error( socket_error::BAD_ADDRESS_TYPE );
 		return this->data.ipv6;
 	}
+
+	uint16_t socket_address::fix_port( const uint16_t& port )
+	{ return ntohs( port ); }
 }
 // namespace network
