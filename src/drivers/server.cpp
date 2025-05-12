@@ -31,7 +31,12 @@ void handle_connection( network::stream_socket connection )
 		std::cout << "Returned message: [" << message << "]\n";
 	}
 
-	if ( std::strcmp( message, "shutdown" ) == 0 ) shutdown = true;
+	if ( !shutdown && std::strcmp( message, "shutdown" ) == 0 )
+	{
+		shutdown = true;
+		network::client_socket ping( address_family, ip_protocol );
+		ping.connect( server_address ); // Ping our own server, so we can stop listening.
+	}
 }
 
 int main()
