@@ -29,12 +29,14 @@ int main()
         // Set up connection parameters
         constexpr AF address_family = AF::INET;
         constexpr PROTOCOL ip_protocol = PROTOCOL::TCP;
-        std::array< uint8_t, 4 > local_host{ 127, 0, 0, 1 };
-        uint16_t port = 8080;
     
         // Create and connect client socket
         client_socket client( address_family, ip_protocol );
-        client.connect( socket_address( address_family, local_host, port ) );
+		socket_address addr( address_family, "localhost", "10000" );
+
+		std::clog << "Queried DNS to get the \"localhost\" address of:\n" << addr << '\n';
+
+        client.connect( addr );
         
 		std::cout << "Connected to the server!\n";
 

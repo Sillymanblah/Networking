@@ -5,6 +5,13 @@
 #include <thread>
 #include <vector>
 
+constexpr int maximum_connections = 10;
+constexpr network::AF address_family = network::AF::INET;
+constexpr network::PF protocol_family = address_family;
+constexpr network::PROTOCOL ip_protocol = network::PROTOCOL::TCP;
+
+const network::socket_address server_address = network::socket_address( address_family, "localhost", "10000" );
+
 bool shutdown = false;
 
 void handle_connection( network::stream_socket connection )
@@ -29,26 +36,19 @@ void handle_connection( network::stream_socket connection )
 
 int main()
 {
-	std::cout << "Hello, World!\n";
+	using namespace network;
+
+	std::vector< std::thread > connection_handlers;
+
 	try
 	{
-		using namespace network;
-
-		constexpr int maximum_connections = 10;
-		constexpr AF address_family = AF::INET;
-		constexpr PF protocol_family = address_family;
-		constexpr PROTOCOL ip_protocol = PROTOCOL::TCP;
-
-		std::array< uint8_t, 4 > local_host{ 127, 0, 0, 1 };
-		uint16_t port = 8080;
-
 		server_socket server( address_family, ip_protocol );
-		server.bind( socket_address( address_family, local_host, port ) );
+
+		std::clog << "Queried the DNS to get the server address of:\n" << server_address << '\n';
+
+		server.bind( server_address );
 
 		server.listen( maximum_connections );
-		;
-
-		std::vector< std::thread > connection_handlers;
 
 		while ( !shutdown )
 		{
@@ -57,7 +57,9 @@ int main()
 	}
 	catch ( const std::runtime_error& error ) { std::cerr << error.what(); }
 
-	std::cout << "Goodbye, World!\n";
-	
+	// Join all the open threads as the connections are closed, we might want a way to forcibly close them.
+	for ( std::thread& connection : connection_handlers )
+		connection.join();
+
 	return 0;
 }
