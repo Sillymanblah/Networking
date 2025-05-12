@@ -188,6 +188,17 @@ namespace network
 		if ( ::listen( this->pointer, backlog ) == SOCKET_ERROR ) throw_last_error();
 	}
 
+	bool server_socket::connection_waiting()
+	{
+		fd_set my_socket{ 1, { this->pointer } };
+
+		int result = ::select( 0, &my_socket, nullptr, nullptr, nullptr );
+		
+		if ( result == SOCKET_ERROR ) throw_last_error();
+
+		return result;
+	}
+
 	stream_socket server_socket::accept()
 	{
 		this->assert_valid();

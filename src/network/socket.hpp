@@ -228,7 +228,11 @@ namespace network
 
 		// Listen for incoming connections on the `network::socket`.
 		void listen( int backlog );
-		// Accept an incoming connection to the `network::socket` and get a new `network::socket` to handle that connection.
+
+		// Check if an incoming connection is available to be accepted by the next call to `network::server_socket::accept`
+		bool connection_waiting();
+
+		// Accept an incoming connection to the `network::server_socket` and get a new `network::stream_socket` to handle that connection.
 		stream_socket accept();
 	};
 }
