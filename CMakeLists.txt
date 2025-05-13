@@ -3,16 +3,23 @@ project( Server_Concurrency )
 
 set( CMAKE_CXX_STANDARD_REQUIRED 20 )
 
+add_library(
+	network STATIC
+	src/network/socket.cpp
+	src/network/socket_error.cpp
+	src/network/socket_address.cpp
+)
+
 add_executable(
 	server
 	src/drivers/server.cpp
 )
 
-add_library(
-	network STATIC
-	src/network/socket.cpp
-	src/network/socket_error.cpp
+add_executable(
+	client
+	src/drivers/client.cpp
 )
 
 target_link_libraries( network Ws2_32 )
-target_link_libraries( server Ws2_32 network )
+target_link_libraries( server network )
+target_link_libraries( client network )
