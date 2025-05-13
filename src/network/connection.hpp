@@ -2,51 +2,17 @@
 #ifndef NETWORK_CONNECTION_HPP
 #define NETWORK_CONNECTION_HPP
 
+// Direct
 #include "network_buffer.hpp"
+#include "codex.hpp"
 
+// STL
 #include <ostream>
 #include <istream>
 #include <cstring>
 
 namespace network
-{
-	// A base class for encryption and decryption functions to be used in the `connection` class.
-	// This class is meant to be inherited by the user to implement their own encryption and decryption functions.
-	class codex
-	{
-	protected:
-		// Virtual encryption function to be overriden by the user's specific implementation.
-		// The base implementation is just to return the data as is.
-		virtual void do_encrypt( const char* input, char* output );
-
-		// Virtual decryption function to be overriden by the user's specific implementation.
-		// The base implementation is just to return the data as is.
-		virtual void do_decrypt( const char* input, char* output );
-	
-	public:
-		// Public encryption function that just calls the protected `do_encrypt` function, which should be overridden by a derived class.
-		void encrypt( const char* input, char* output )
-		{ do_encrypt( input, output ); }
-		void decrypt( const char* input, char* output )
-		{ do_decrypt( input, output ); }
-	};
-
-	class null_codex : public codex
-	{
-	protected:
-		// A helper function to copy data from the input buffer to the output buffer.
-		void copy_data( const char* input, char* output )
-		{ std::memcpy( output, input, std::strlen( input ) ); }
-
-		// An empty implementation of the encryption function, which does nothing, marked as final so this class cannot be inherited.
-		void do_encrypt( const char* input, char* output ) override final
-		{ copy_data( input, output ); }
-
-		// An empty implementation of the decryption function, which does nothing, marked as final so this class cannot be inherited.
-		void do_decrypt( const char* input, char* output ) override final
-		{ copy_data( input, output ); }
-	};
-	
+{	
 	class connection : public std::iostream
 	{
 	public:
