@@ -1,4 +1,5 @@
 #include "../network/socket"
+#include "configs.hpp"
 
 #include <iostream>
 #include <string>
@@ -23,27 +24,22 @@ void handle_client( network::stream_socket& connection )
 
 int main()
 {
-    try
-	{
-        using namespace network;
+	using namespace network;
 
-        // Set up connection parameters
-        constexpr AF address_family = AF::INET;
-        constexpr PROTOCOL ip_protocol = PROTOCOL::TCP;
-    
+	try
+	{
         // Create and connect client socket
         client_socket client( address_family, ip_protocol );
-		socket_address addr( address_family, "localhost", "10000" );
 
-		std::clog << "Queried DNS to get the \"localhost\" address of:\n" << addr << '\n';
+		std::clog << "Connecting to the server at the address:\n" << server_address << '\n';
 
-        client.connect( addr );
+        client.connect( server_address );
         
 		std::cout << "Connected to the server!\n";
 
 		handle_client( client );
     }
-    catch ( const network::socket_error& error )
+    catch ( const socket_error& error )
 	{
         std::cerr << "Error: " << error.what() << std::endl;
         return 1;

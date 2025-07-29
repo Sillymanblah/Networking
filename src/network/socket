@@ -4,5 +4,6 @@
 
 #include "socket.hpp"
 #include "socket_error.hpp"
+#include "codex.hpp"
 
 #endif // __SOCKET__

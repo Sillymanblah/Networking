@@ -1,18 +1,28 @@
 #include "../network/socket"
+#include "configs.hpp"
 
 #include <cstring>
 #include <iostream>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <vector>
+#include <deque>
 
 constexpr int maximum_connections = 10;
-constexpr network::AF address_family = network::AF::INET;
-constexpr network::PF protocol_family = address_family;
-constexpr network::PROTOCOL ip_protocol = network::PROTOCOL::TCP;
 
-const network::socket_address server_address = network::socket_address( address_family, "localhost", "10000" );
+static bool shutdown = false;
 
-bool shutdown = false;
+class connection_handler
+{
+public:
+	using connection_list	= std::deque< network::stream_socket* >;
+
+public:
+	// Handle the full set of connections here, have a subclass that handles individual connections.
+
+	
+};
 
 void handle_connection( network::stream_socket connection )
 {
@@ -59,7 +69,7 @@ int main()
 	{
 		server_socket server( address_family, ip_protocol );
 
-		std::clog << "Queried the DNS to get the server address of:\n" << server_address << '\n';
+		std::clog << "Server will be bound to the address:\n" << server_address << '\n';
 
 		server.bind( server_address );
 
@@ -78,7 +88,7 @@ int main()
 					std::clog << "Accepted the connection!\nPassing it on to the handler...\n";
 					connection_handlers.emplace_back( handle_connection, std::move( new_connection ) );
 				}
-				catch ( const socket_error& err ) {} // Do nothing the only error this should be is a failed accept operation that we can ignore.
+				catch ( const socket_error& ) {} // Do nothing the only error this should be is a failed accept operation that we can ignore.
 			}
 			// In the event that `connection_waiting` is non-blocking on the socket for some reason, which would mean someone used a hacky workaround to implant their own `socket_ptr` into `server_socket`, there is a catch here.
 			else
