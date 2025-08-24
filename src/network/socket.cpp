@@ -15,13 +15,13 @@ namespace network
 
 	void socket_base::throw_last_error()
 	{ throw_error( WSAGetLastError() ); }
-	
+
 	void socket_base::initialize()
 	{ if ( int code = WSAStartup( MAKEWORD( 2, 2 ), &network::data ) ) throw_error( code ); }
 
 	void socket_base::deinitialize()
 	{ if ( WSACleanup() ) throw_last_error(); }
-	
+
 	socket_base::socket_base() : pointer( INVALID_SOCKET ) {}
 
 	socket_base::socket_ptr socket_base::create_socket( AF address_family, SOCKET_TYPE type, PROTOCOL ip_protocol )
@@ -67,7 +67,7 @@ namespace network
 
 	socket_base::~socket_base()
 	{ destroy_socket( this->pointer ); }
-	
+
 	void socket_base::assert_valid() const
 	{ if ( this->pointer == INVALID_SOCKET ) throw_error( socket_error::SOCKET_NOT_VALID ); }
 
@@ -179,7 +179,7 @@ namespace network
 			if ( ::bind( this->pointer, ( sockaddr* ) &ipv4, sizeof( socket_address::IPv4_address ) ) == SOCKET_ERROR ) throw_last_error();
 		}
 	}
-	
+
 	void server_socket::listen( int backlog )
 	{
 		this->assert_valid();
@@ -193,7 +193,7 @@ namespace network
 		fd_set my_socket{ 1, { this->pointer } };
 
 		int result = ::select( 0, &my_socket, nullptr, nullptr, nullptr );
-		
+
 		if ( result == SOCKET_ERROR ) throw_last_error();
 
 		return result;

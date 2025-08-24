@@ -87,7 +87,7 @@ namespace network
 		if ( this->is_ipv6 ) throw socket_error( socket_error::BAD_ADDRESS_TYPE );
 		return this->data.ipv4;
 	}
-	
+
 	socket_address::IPv6_address socket_address::get_ipv6() const
 	{
 		if ( !this->is_ipv6 ) throw socket_error( socket_error::BAD_ADDRESS_TYPE );

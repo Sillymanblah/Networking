@@ -48,7 +48,7 @@ namespace network
 		NETDES		= 28,		// Network Designers OSI & gateway
 	};
 	// enum class AF
-	
+
 	class socket_address
 	{
 	public:
@@ -84,14 +84,14 @@ namespace network
 					uint64_t routing : 48;
 					uint64_t subnet : 16;
 				};
-				
+
 				union
 				{
 					prefix_data prefix;
 					uint8_t bytes[8];
 					uint16_t hextets[4];
 				} network;
-				
+
 				union
 				{
 					uint64_t interface;
@@ -106,7 +106,7 @@ namespace network
 				uint16_t hextets[8];
 				unicast_data unicast;
 			};
-			
+
 			// Actual structure of the datatype.
 			AF address_family;
 			uint16_t port;
@@ -178,7 +178,7 @@ namespace network
 			// Set the state based on our current state.
 			output.setstate( state );
 		}
-		
+
 		// Does not currently implement the rules for omitting zeroes by use of the double colon.
 		template < class _Elem, class _Traits >
 		void print_ipv6( std::basic_ostream< _Elem, _Traits >& output ) const
@@ -218,7 +218,7 @@ namespace network
 			// Set the state based on our current state.
 			output.setstate( state );
 		}
-		
+
 		static uint16_t fix_port( const uint16_t& port );
 
 		template < class _Elem, class _Traits >
@@ -260,7 +260,7 @@ namespace network
 			{
 				if ( address.is_ipv6 ) address.print_ipv6( output );
 				else address.print_ipv4( output );
-			
+
 				// If the output state is good after printing out the ip base, print the port.
 				if ( output.good() ) address.print_port( output );
 			}

@@ -31,7 +31,7 @@ namespace network
 		socket_error& operator = ( socket_error&& ) noexcept = default;
 
 		const char* what() const noexcept override;
-		
+
 	private:
 		int code;
 	};

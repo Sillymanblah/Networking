@@ -54,7 +54,7 @@ namespace network
 		RDM			= 4,	// reliably-delivered message
 		SEQPACKET	= 5,	// sequenced packet stream
 	};
-	
+
 	class socket_base
 	{
 	protected:
@@ -64,7 +64,7 @@ namespace network
 	private:
 		// Track the number of active network handlers, when we hit 0, deinitialize WinSock.
 		static unsigned short count;
-	
+
 	protected:
 		// Throws an error with a message based on the respective cleanup error code, all other error codes are ignored.
 		[[noreturn]] static void throw_error( int error_code );
@@ -91,7 +91,7 @@ namespace network
 			call to WSAStartup, which might fail. in that event, a `std::runtime_error` will be thrown with an error message describing the issue.
 		*/
 		socket_base( AF address_family, SOCKET_TYPE type, PROTOCOL ip_protocol );
-	
+
 	protected:
 		socket_base( socket_ptr socket, int flags = 0 );
 
@@ -104,7 +104,7 @@ namespace network
 		socket_base( socket_base&& other );
 		// Move assignment copies the data and deletes the old object's data.
 		socket_base& operator = ( socket_base&& other );
-	
+
 		// Copy constructor deleted, makes no sense to have multiple handles for a socket.
 		socket_base( const socket_base& ) = delete;
 		// Copy assignment deleted, makes no sense to have multiple handles for a socket.
@@ -158,12 +158,12 @@ namespace network
 		basic_socket( const basic_socket& other ) = delete;
 		// Copy assignment is deleted, does not make sense to copy a socket.
 		basic_socket& operator = ( const basic_socket& other ) = delete;
-	
+
 		// Standard socket `recv` function wrapper.
 		int recieve( char *buffer, int length );
 		// Standard socket `send` function wrapper.
 		int send( const char *buffer, int length );
-		
+
 		// TODO: These functions need to be refined a bit, as for the usage I have thus far, they kind of need to be able to take a length of `size_t`
 		// Recieves all data up to `length` into the `buffer` by repeatedly calling `socket::recieve`.
 		void recieve_all( char* buffer, int length );

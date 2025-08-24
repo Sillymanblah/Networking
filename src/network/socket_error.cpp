@@ -205,7 +205,7 @@ namespace network
 			return "Unknown socket error code!";
 		}
 	}
-	
+
 	socket_error::socket_error( int error_code ) noexcept : code( error_code ) {}
 	const char* socket_error::what() const noexcept
 	{ return get_error_message( code ); }
