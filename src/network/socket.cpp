@@ -65,6 +65,12 @@ namespace network
 		return *this;
 	}
 
+	void socket_base::close()
+	{
+		destroy_socket( this->pointer );
+		this->clear();
+	}
+
 	socket_base::~socket_base()
 	{ destroy_socket( this->pointer ); }
 
@@ -75,66 +81,13 @@ namespace network
 	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( AF address_family, PROTOCOL ip_protocol ) :
 		socket_base( address_family, SOCKET_TYPE::STREAM, ip_protocol ), flags( 0 ) {}
 
-	// Move constructor copies the data and deletes the old object's data.
-	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( basic_socket&& other ) : socket_base( std::move( other ) ), flags( 0 ) {}
+	stream_socket::stream_socket( AF address_family, PROTOCOL ip_protocol ) : stream_socket_base( address_family, ip_protocol ) {}
 
-	// Move assignment copies the data and deletes the old object's data.
-	basic_socket< SOCKET_TYPE::STREAM >& basic_socket< SOCKET_TYPE::STREAM >::operator = ( basic_socket&& other )
-	{
-		( socket_base& ) *this = std::move( other );
-		this->flags = other.flags;
-		return *this;
-	}
+	connected_socket stream_socket::connect( const socket_address& address ) { return connected_socket( std::move( *this ), address ); }
+	
+	server_socket stream_socket::open( const socket_address& address, int backlog ) { return server_socket( std::move( *this ), address, backlog ); }
 
-	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( socket_ptr socket ) : socket_base( socket ) {}
-
-	union size_packet
-	{
-		size_t size;
-		char raw[ sizeof( size_t ) ];
-	};
-
-	int basic_socket< SOCKET_TYPE::STREAM >::recieve( char *buffer, int length )
-	{
-		this->assert_valid();
-
-		int recieved = ::recv( this->pointer, buffer, length, this->flags );
-		if ( recieved == SOCKET_ERROR ) throw_last_error();
-
-		return recieved;
-	}
-
-	int basic_socket< SOCKET_TYPE::STREAM >::send( const char *buffer, int length )
-	{
-		this->assert_valid();
-
-		int sent = ::send( this->pointer, buffer, length, this->flags );
-		if ( sent == SOCKET_ERROR ) throw_last_error();
-
-		return sent;
-	}
-
-	void basic_socket< SOCKET_TYPE::STREAM >::recieve_all( char* buffer, int length )
-	{ for ( int recieved = 0; recieved != length; recieved += this->recieve( buffer, length ) ); }
-
-	void basic_socket< SOCKET_TYPE::STREAM >::send_all( const char* buffer, int length )
-	{ for ( int sent = 0; sent != length; sent += this->send( buffer, length ) ); }
-
-
-	// Constructor that takes an address family and protocol to create a socket for use.
-	client_socket::client_socket( AF address_family, PROTOCOL ip_protocol ) : basic_socket< SOCKET_TYPE::STREAM >( address_family, ip_protocol ) {}
-
-	// Move constructor copies the data and deletes the old object's data.
-	client_socket::client_socket( client_socket&& other ) : basic_socket< SOCKET_TYPE::STREAM >( std::move( other ) ) {}
-
-	// Move assignment copies the data and deletes the old object's data.
-	client_socket& client_socket::operator = ( client_socket&& other )
-	{
-		( basic_socket< SOCKET_TYPE::STREAM >& ) *this = std::move( other );
-		return *this;
-	}
-
-	void client_socket::connect( const socket_address& address )
+	void connected_socket::connect( const socket_address& address )
 	{
 		this->assert_valid();
 
@@ -151,18 +104,33 @@ namespace network
 		}
 	}
 
-	// Constructor that takes an address family and protocol to create a socket for use.
-	server_socket::server_socket( AF address_family, PROTOCOL ip_protocol ) : socket_base( address_family, SOCKET_TYPE::STREAM, ip_protocol ) {}
+	connected_socket::connected_socket( stream_socket&& other, const socket_address& address ) : stream_socket_base( std::move( other ) ) { this->connect( address ); }
 
-	// Move constructor copies the data and deletes the old object's data.
-	server_socket::server_socket( server_socket&& other ) : socket_base( std::move( other ) ) {}
+	connected_socket::connected_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address ) : stream_socket_base( address_family, ip_protocol ) { this->connect( address ); }
 
-	// Move assignment copies the data and deletes the old object's data.
-	server_socket& server_socket::operator = ( server_socket&& other )
+	int connected_socket::recieve( char *buffer, int length )
 	{
-		( socket_base& ) *this = std::move( other );
-		return *this;
+		int recieved = ::recv( this->pointer, buffer, length, this->flags );
+		if ( recieved == SOCKET_ERROR ) throw_last_error();
+
+		return recieved;
 	}
+
+	int connected_socket::send( const char *buffer, int length )
+	{
+		int sent = ::send( this->pointer, buffer, length, this->flags );
+		if ( sent == SOCKET_ERROR ) throw_last_error();
+
+		return sent;
+	}
+
+	void connected_socket::recieve_all( char* buffer, int length )
+	{ for ( int recieved = 0; recieved != length; recieved += this->recieve( buffer, length ) ); }
+
+	void connected_socket::send_all( const char* buffer, int length )
+	{ for ( int sent = 0; sent != length; sent += this->send( buffer, length ) ); }
+
+	void connected_socket::disconnect() { this->close(); }
 
 	void server_socket::bind( const socket_address& address )
 	{
@@ -180,12 +148,18 @@ namespace network
 		}
 	}
 
-	void server_socket::listen( int backlog )
-	{
-		this->assert_valid();
-		// Might want to check that we are bound to an address.
+	void server_socket::listen( int backlog ) { if ( ::listen( this->pointer, backlog ) == SOCKET_ERROR ) throw_last_error(); }
 
-		if ( ::listen( this->pointer, backlog ) == SOCKET_ERROR ) throw_last_error();
+	server_socket::server_socket( stream_socket&& other, const socket_address& address, int backlog ) : stream_socket_base( std::move( other ) )
+	{
+		this->bind( address );
+		this->listen( backlog );
+	}
+
+	server_socket::server_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address, int backlog ) : stream_socket_base( address_family, ip_protocol )
+	{
+		this->bind( address );
+		this->listen( backlog );
 	}
 
 	bool server_socket::connection_waiting()
@@ -199,7 +173,7 @@ namespace network
 		return result;
 	}
 
-	stream_socket server_socket::accept()
+	connected_socket server_socket::accept()
 	{
 		this->assert_valid();
 		// Might want to check that we are in listening mode.
@@ -209,5 +183,7 @@ namespace network
 
 		return socket;
 	}
+
+	void close();
 }
 // namespace network

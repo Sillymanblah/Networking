@@ -113,6 +113,9 @@ namespace network
 	private:
 		static void destroy_socket( socket_ptr socket );
 
+	protected:
+		void close();
+
 	public:
 		// Closes a network socket handler, and if it is the last one, also shuts down WSA
 		~socket_base();
@@ -127,21 +130,13 @@ namespace network
 	// The `network::socket` class wraps WinSock, and eventually will wrap sys/socket as an easy and portable library.
 	// Though, it is not recommended to use `network::socket` by itself, but instead one should use the `network::connection` class which derives from `std::iostream` and uses `network::socket` via a `network::buffer`.
 	// Also, note that `network::socket` is templated and has different definitions based on the socket types since the socket types are not interchangeable.
-	// Currently the only socket type supported is `SOCKET_TYPE::STREAM`, which is a socket stream (default TCP).
+	// Currently the only socket type supported is `SOCKET_TYPE::STREAM`, which is a socket stream.
 	template < SOCKET_TYPE _Type >
 	class basic_socket : public socket_base {};
 
 	template <>
 	class basic_socket< SOCKET_TYPE::STREAM > : public socket_base
 	{
-	private:
-		// Protected overload that allows us to create a `network::basic_socket< SOCKET_TYPE::STREAM >` from a socket pointer type, used by `network::server_socket::accept()`
-		friend class server_socket;
-		basic_socket( socket_ptr socket );
-
-		// TODO: Standard socket wrapping functions.
-		// TODO: Make address (IPv4, IPv6, and full address) and port structs
-
 	public:
 		// Default constructor, creates an empty socket.
 		basic_socket() = default;
@@ -150,14 +145,136 @@ namespace network
 		basic_socket( AF address_family, PROTOCOL ip_protocol );
 
 		// Move constructor copies the data and deletes the old object's data.
-		basic_socket( basic_socket&& other );
+		basic_socket( basic_socket&& other ) = default;
 		// Move assignment copies the data and deletes the old object's data.
-		basic_socket& operator = ( basic_socket&& other );
+		basic_socket& operator = ( basic_socket&& other ) = default;
 
 		// Copy constructor is deleted, does not make sense to copy a socket.
 		basic_socket( const basic_socket& other ) = delete;
 		// Copy assignment is deleted, does not make sense to copy a socket.
 		basic_socket& operator = ( const basic_socket& other ) = delete;
+
+	public:
+		void set_flags( int flags, int mask );
+
+	protected:
+		int flags;
+	};
+
+	// Type alias to simplify things, this is what our stream type sockets will derive from.
+	using stream_socket_base = basic_socket< SOCKET_TYPE::STREAM >;
+
+	// Forwarding declarations for use in `network::stream_socket`.
+	class connected_socket;
+	class server_socket;
+
+	// Basic stream socket class that provides no functionality but can be used to easily create a server or client stream socket.
+	class stream_socket : public stream_socket_base
+	{
+	public:
+		// Default constructor, creates an empty socket.
+		stream_socket() = default;
+
+		// Constructor that takes an address family and protocol to create a socket for use.
+		stream_socket( AF address_family, PROTOCOL ip_protocol );
+
+		// Move constructor copies the data and deletes the old object's data.
+		stream_socket( stream_socket&& other ) = default;
+		// Move assignment copies the data and deletes the old object's data.
+		stream_socket& operator = ( stream_socket&& other ) = default;
+
+		// Copy constructor is deleted, does not make sense to copy a socket.
+		stream_socket( const stream_socket& other ) = delete;
+		// Copy assignment is deleted, does not make sense to copy a socket.
+		stream_socket& operator = ( const stream_socket& other ) = delete;
+
+		// Establish a connection to a server socket via address.
+		// Note that this function converts this `network::stream_socket` into the resulting `network::client_socket`, thus this socket will be invalidated.
+		connected_socket connect( const socket_address& address );
+		
+		// Open a server socket using the address given with the given backlog, which defaults to 10 waiting connections.
+		// Note that this function converts this `network::stream_socket` into the resulting `network::server_socket`, thus this socket will be invalidated.
+		server_socket open( const socket_address& address, int backlog = 10 );
+	};
+
+	// The `network::server_socket` class inherits from `network::socket_base` and is used to handle server operations, and returns stream sockets upon successful connection.
+	class server_socket : private stream_socket_base
+	{
+	private:
+		// Bind `network::socket` with an address.
+		void bind( const socket_address& address );
+
+		// Listen for incoming connections on the `network::socket`.
+		void listen( int backlog );
+
+		// Creates a server socket from the given stream socket by binding it to the address and listening with the given backlog.
+		server_socket( stream_socket&& other, const socket_address& address, int backlog = 10 );
+
+		// Friend the stream_socket class' conversion function so it can call the above constructor.
+		friend server_socket stream_socket::open( const network::socket_address &address, int backlog );
+
+	public:
+		// Default constructor, creates an empty socket.
+		server_socket() = default;
+
+		// Constructor that takes an address family and protocol to create a socket for use, and then binds it to the address with the given backlog.
+		server_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address, int backlog );
+
+		// Move constructor copies the data and deletes the old object's data.
+		server_socket( server_socket&& other );
+		// Move assignment copies the data and deletes the old object's data.
+		server_socket& operator = ( server_socket&& other );
+
+		// Copy constructor is deleted, does not make sense to copy a socket.
+		server_socket( const server_socket& other ) = delete;
+		// Copy assignment is deleted, does not make sense to copy a socket.
+		server_socket& operator = ( const server_socket& other ) = delete;
+
+		// Check if an incoming connection is available to be accepted by the next call to `network::server_socket::accept`
+		bool connection_waiting();
+
+		// Accept an incoming connection to the `network::server_socket` and get a new `network::connected_socket` to handle that connection.
+		connected_socket accept();
+
+		// Close this server down, all further connections will fail, but existing connections will not be shut down.
+		void close();
+	};
+
+	// A connected socket is a type of stream socket that is permitted to send and recieve data.
+	class connected_socket : public stream_socket_base
+	{
+	private:
+		// Helper function to connect the client to the socket
+		void connect( const socket_address& address );
+
+		// Converts a stream socket into a client socket by connecting it to the given address.
+		connected_socket( stream_socket&& other, const socket_address& address );
+
+		// Friend the stream socket class' conversion function so it can call the above constructor.
+		friend connected_socket stream_socket::connect( const socket_address& address );
+
+		// Converts a socket pointer to a connected socket, for use only by `network::server_socket`.
+		connected_socket( socket_ptr pointer );
+
+		// Friend the server socket's accept function to call the above constructor.
+		friend connected_socket server_socket::accept();
+
+	public:
+		// Default constructor, creates an empty socket.
+		connected_socket() = default;
+
+		// Create a socket with the address family and protocol and then connect it to the server at the address.
+		connected_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address );
+
+		// Move constructor copies the data and deletes the old object's data.
+		connected_socket( connected_socket&& other ) = default;
+		// Move assignment copies the data and deletes the old object's data.
+		connected_socket& operator = ( connected_socket&& other ) = default;
+
+		// Copy constructor is deleted, does not make sense to copy a socket.
+		connected_socket( const connected_socket& other ) = delete;
+		// Copy assignment is deleted, does not make sense to copy a socket.
+		connected_socket& operator = ( const connected_socket& other ) = delete;
 
 		// Standard socket `recv` function wrapper.
 		int recieve( char *buffer, int length );
@@ -170,70 +287,8 @@ namespace network
 		// Sends all data up to `length` into the `buffer` by repeatedly calling `socket::send`.
 		void send_all( const char* buffer, int length );
 
-	public:
-		void set_flags( int flags, int mask );
-
-	protected:
-		int flags;
-	};
-
-	using stream_socket = basic_socket< SOCKET_TYPE::STREAM >;
-
-	// The `network::client_socket` class is a wrapper around the `network::socket` class, and is used to handle client connections.
-	class client_socket : public stream_socket
-	{
-	public:
-		// Default constructor, creates an empty socket.
-		client_socket() = default;
-
-		// Constructor that takes an address family and protocol to create a socket for use.
-		client_socket( AF address_family, PROTOCOL ip_protocol );
-
-		// Move constructor copies the data and deletes the old object's data.
-		client_socket( client_socket&& other );
-		// Move assignment copies the data and deletes the old object's data.
-		client_socket& operator = ( client_socket&& other );
-
-		// Copy constructor is deleted, does not make sense to copy a socket.
-		client_socket( const client_socket& other ) = delete;
-		// Copy assignment is deleted, does not make sense to copy a socket.
-		client_socket& operator = ( const client_socket& other ) = delete;
-
-		void connect( const socket_address& address );
-
-	};
-
-	// The `network::server_socket` class inherits from `network::socket_base` and is used to handle server operations, and returns stream sockets upon successful connection.
-	class server_socket : private socket_base
-	{
-	public:
-		// Default constructor, creates an empty socket.
-		server_socket() = default;
-
-		// Constructor that takes an address family and protocol to create a socket for use.
-		server_socket( AF address_family, PROTOCOL ip_protocol );
-
-		// Move constructor copies the data and deletes the old object's data.
-		server_socket( server_socket&& other );
-		// Move assignment copies the data and deletes the old object's data.
-		server_socket& operator = ( server_socket&& other );
-
-		// Copy constructor is deleted, does not make sense to copy a socket.
-		server_socket( const server_socket& other ) = delete;
-		// Copy assignment is deleted, does not make sense to copy a socket.
-		server_socket& operator = ( const server_socket& other ) = delete;
-
-		// Bind `network::socket` with an address.
-		void bind( const socket_address& address );
-
-		// Listen for incoming connections on the `network::socket`.
-		void listen( int backlog );
-
-		// Check if an incoming connection is available to be accepted by the next call to `network::server_socket::accept`
-		bool connection_waiting();
-
-		// Accept an incoming connection to the `network::server_socket` and get a new `network::stream_socket` to handle that connection.
-		stream_socket accept();
+		// Closes the socket connection and the related socket.
+		void disconnect();
 	};
 }
 // namespace network
