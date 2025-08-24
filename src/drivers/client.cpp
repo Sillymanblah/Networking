@@ -1,10 +1,10 @@
-#include "../network/socket"
+#include "shared.hpp"
 
 #include <iostream>
 #include <string>
 #include <cstring>
 
-void handle_client( network::stream_socket& connection )
+void handle_client( network::connected_socket& connection )
 {
 	constexpr int buffer_size = 1024;
 	char message[ buffer_size ] = "";
@@ -26,18 +26,14 @@ int main()
     try
 	{
         using namespace network;
-
-        // Set up connection parameters
-        constexpr AF address_family = AF::INET;
-        constexpr PROTOCOL ip_protocol = PROTOCOL::TCP;
     
         // Create and connect client socket
-        client_socket client( address_family, ip_protocol );
+        stream_socket my_socket( address_family, ip_protocol );
 		socket_address addr( address_family, "localhost", "10000" );
 
 		std::clog << "Queried DNS to get the \"localhost\" address of:\n" << addr << '\n';
 
-        client.connect( addr );
+        connected_socket client( my_socket.connect( addr ) );
         
 		std::cout << "Connected to the server!\n";
 
