@@ -137,6 +137,10 @@ namespace network
 	template <>
 	class basic_socket< SOCKET_TYPE::STREAM > : public socket_base
 	{
+	protected:
+		// Protected helper constructor to create a basic stream socket from a pointer.
+		basic_socket( socket_ptr pointer );
+
 	public:
 		// Default constructor, creates an empty socket.
 		basic_socket() = default;
@@ -221,9 +225,9 @@ namespace network
 		server_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address, int backlog );
 
 		// Move constructor copies the data and deletes the old object's data.
-		server_socket( server_socket&& other );
+		server_socket( server_socket&& other ) = default;
 		// Move assignment copies the data and deletes the old object's data.
-		server_socket& operator = ( server_socket&& other );
+		server_socket& operator = ( server_socket&& other ) = default;
 
 		// Copy constructor is deleted, does not make sense to copy a socket.
 		server_socket( const server_socket& other ) = delete;

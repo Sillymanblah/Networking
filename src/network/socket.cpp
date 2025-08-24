@@ -77,6 +77,8 @@ namespace network
 	void socket_base::assert_valid() const
 	{ if ( this->pointer == INVALID_SOCKET ) throw_error( socket_error::SOCKET_NOT_VALID ); }
 
+	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( socket_ptr pointer ) : socket_base( pointer ) {}
+
 	// Constructor that takes an address family and protocol to create a socket for use.
 	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( AF address_family, PROTOCOL ip_protocol ) :
 		socket_base( address_family, SOCKET_TYPE::STREAM, ip_protocol ), flags( 0 ) {}
@@ -86,51 +88,6 @@ namespace network
 	connected_socket stream_socket::connect( const socket_address& address ) { return connected_socket( std::move( *this ), address ); }
 	
 	server_socket stream_socket::open( const socket_address& address, int backlog ) { return server_socket( std::move( *this ), address, backlog ); }
-
-	void connected_socket::connect( const socket_address& address )
-	{
-		this->assert_valid();
-
-		// Might want to check that we are not already connected.
-		if ( address.is_ipv6_address() )
-		{
-			socket_address::IPv6_address ipv6 = address.get_ipv6();
-			if ( ::connect( this->pointer, ( sockaddr* ) &ipv6, sizeof( socket_address::IPv6_address ) ) == SOCKET_ERROR ) throw_last_error();
-		}
-		else
-		{
-			socket_address::IPv4_address ipv4 = address.get_ipv4();
-			if ( ::connect( this->pointer, ( sockaddr* ) &ipv4, sizeof( socket_address::IPv4_address ) ) == SOCKET_ERROR ) throw_last_error();
-		}
-	}
-
-	connected_socket::connected_socket( stream_socket&& other, const socket_address& address ) : stream_socket_base( std::move( other ) ) { this->connect( address ); }
-
-	connected_socket::connected_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address ) : stream_socket_base( address_family, ip_protocol ) { this->connect( address ); }
-
-	int connected_socket::recieve( char *buffer, int length )
-	{
-		int recieved = ::recv( this->pointer, buffer, length, this->flags );
-		if ( recieved == SOCKET_ERROR ) throw_last_error();
-
-		return recieved;
-	}
-
-	int connected_socket::send( const char *buffer, int length )
-	{
-		int sent = ::send( this->pointer, buffer, length, this->flags );
-		if ( sent == SOCKET_ERROR ) throw_last_error();
-
-		return sent;
-	}
-
-	void connected_socket::recieve_all( char* buffer, int length )
-	{ for ( int recieved = 0; recieved != length; recieved += this->recieve( buffer, length ) ); }
-
-	void connected_socket::send_all( const char* buffer, int length )
-	{ for ( int sent = 0; sent != length; sent += this->send( buffer, length ) ); }
-
-	void connected_socket::disconnect() { this->close(); }
 
 	void server_socket::bind( const socket_address& address )
 	{
@@ -184,6 +141,51 @@ namespace network
 		return socket;
 	}
 
-	void close();
+	void connected_socket::connect( const socket_address& address )
+	{
+		this->assert_valid();
+
+		// Might want to check that we are not already connected.
+		if ( address.is_ipv6_address() )
+		{
+			socket_address::IPv6_address ipv6 = address.get_ipv6();
+			if ( ::connect( this->pointer, ( sockaddr* ) &ipv6, sizeof( socket_address::IPv6_address ) ) == SOCKET_ERROR ) throw_last_error();
+		}
+		else
+		{
+			socket_address::IPv4_address ipv4 = address.get_ipv4();
+			if ( ::connect( this->pointer, ( sockaddr* ) &ipv4, sizeof( socket_address::IPv4_address ) ) == SOCKET_ERROR ) throw_last_error();
+		}
+	}
+
+	connected_socket::connected_socket( stream_socket&& other, const socket_address& address ) : stream_socket_base( std::move( other ) ) { this->connect( address ); }
+
+	connected_socket::connected_socket( socket_ptr pointer ) : stream_socket_base( pointer ) {}
+	
+	connected_socket::connected_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address ) : stream_socket_base( address_family, ip_protocol ) { this->connect( address ); }
+
+	int connected_socket::recieve( char *buffer, int length )
+	{
+		int recieved = ::recv( this->pointer, buffer, length, this->flags );
+		if ( recieved == SOCKET_ERROR ) throw_last_error();
+
+		return recieved;
+	}
+
+	int connected_socket::send( const char *buffer, int length )
+	{
+		int sent = ::send( this->pointer, buffer, length, this->flags );
+		if ( sent == SOCKET_ERROR ) throw_last_error();
+
+		return sent;
+	}
+
+	void connected_socket::recieve_all( char* buffer, int length )
+	{ for ( int recieved = 0; recieved != length; recieved += this->recieve( buffer, length ) ); }
+
+	void connected_socket::send_all( const char* buffer, int length )
+	{ for ( int sent = 0; sent != length; sent += this->send( buffer, length ) ); }
+
+	void connected_socket::disconnect() { this->close(); }
 }
 // namespace network
