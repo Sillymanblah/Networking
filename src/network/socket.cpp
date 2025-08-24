@@ -77,7 +77,7 @@ namespace network
 	void socket_base::assert_valid() const
 	{ if ( this->pointer == INVALID_SOCKET ) throw_error( socket_error::SOCKET_NOT_VALID ); }
 
-	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( socket_ptr pointer ) : socket_base( pointer ) {}
+	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( socket_ptr pointer, int flags )  : socket_base( pointer ), flags( flags ) {}
 
 	// Constructor that takes an address family and protocol to create a socket for use.
 	basic_socket< SOCKET_TYPE::STREAM >::basic_socket( AF address_family, PROTOCOL ip_protocol ) :
@@ -132,20 +132,14 @@ namespace network
 
 	connected_socket server_socket::accept()
 	{
-		this->assert_valid();
-		// Might want to check that we are in listening mode.
-
 		socket_ptr socket = ::accept( this->pointer, nullptr, nullptr );
 		if ( socket == INVALID_SOCKET ) throw_last_error();
 
-		return socket;
+		return connected_socket( socket, this->flags );
 	}
 
 	void connected_socket::connect( const socket_address& address )
 	{
-		this->assert_valid();
-
-		// Might want to check that we are not already connected.
 		if ( address.is_ipv6_address() )
 		{
 			socket_address::IPv6_address ipv6 = address.get_ipv6();
@@ -160,7 +154,7 @@ namespace network
 
 	connected_socket::connected_socket( stream_socket&& other, const socket_address& address ) : stream_socket_base( std::move( other ) ) { this->connect( address ); }
 
-	connected_socket::connected_socket( socket_ptr pointer ) : stream_socket_base( pointer ) {}
+	connected_socket::connected_socket( socket_ptr pointer, int flags ) : stream_socket_base( pointer, flags ) {}
 	
 	connected_socket::connected_socket( AF address_family, PROTOCOL ip_protocol, const socket_address& address ) : stream_socket_base( address_family, ip_protocol ) { this->connect( address ); }
 

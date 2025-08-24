@@ -139,7 +139,7 @@ namespace network
 	{
 	protected:
 		// Protected helper constructor to create a basic stream socket from a pointer.
-		basic_socket( socket_ptr pointer );
+		basic_socket( socket_ptr pointer, int flags );
 
 	public:
 		// Default constructor, creates an empty socket.
@@ -257,8 +257,8 @@ namespace network
 		// Friend the stream socket class' conversion function so it can call the above constructor.
 		friend connected_socket stream_socket::connect( const socket_address& address );
 
-		// Converts a socket pointer to a connected socket, for use only by `network::server_socket`.
-		connected_socket( socket_ptr pointer );
+		// Converts a socket pointer to a connected socket and set the flags, for use only by `network::server_socket`.
+		connected_socket( socket_ptr pointer, int flags );
 
 		// Friend the server socket's accept function to call the above constructor.
 		friend connected_socket server_socket::accept();
